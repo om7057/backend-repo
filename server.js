@@ -29,6 +29,20 @@ app.use(cors({
 }));
 app.use(express.json());
 
+// Helper to check mongoose connection state
+function isDbConnected() {
+  // 0 disconnected, 1 connected, 2 connecting, 3 disconnecting
+  return mongoose.connection && mongoose.connection.readyState === 1;
+}
+
+// Return 503 for any /api requests when DB isn't ready to prevent 500s
+app.use('/api', (req, res, next) => {
+  if (!isDbConnected()) {
+    return res.status(503).json({ message: 'Service unavailable - database not ready' });
+  }
+  next();
+});
+
 // ✅ Connect to MongoDB Atlas
 mongoose.connect(process.env.MONGO_URI, {
   useNewUrlParser: true,
@@ -136,7 +150,7 @@ app.get('/api/leaderboard', async (req, res) => {
 
 // Health check route for cron / monitoring
 app.get('/health', (req, res) => {
-  res.type('text').status(200).send('Hello, world!');
+  res.json({ ok: true, db: isDbConnected() ? 'connected' : 'disconnected' });
 });
 
 const PORT = process.env.PORT || 5000;
