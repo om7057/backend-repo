@@ -4,7 +4,29 @@ const cors = require('cors');
 require('dotenv').config();
 
 const app = express();
-app.use(cors());
+
+// Configure CORS to allow requests from the deployed frontend and local dev
+const allowedOrigins = [
+  'https://nptel-tau.vercel.app', // hosted frontend
+  'https://nptel-tau.vercel.app/',
+  'http://localhost:3000', // local dev when using `npm start` or `serve`
+  'http://127.0.0.1:3000'
+];
+
+app.use(cors({
+  origin: function (origin, callback) {
+    // allow requests with no origin (like server-to-server or curl)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      return callback(null, true);
+    } else {
+      return callback(new Error('CORS policy: This origin is not allowed'), false);
+    }
+  },
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
+}));
 app.use(express.json());
 
 // ✅ Connect to MongoDB Atlas
