@@ -55,19 +55,24 @@ const questions = [
 
 // ✅ Login / Signup
 app.post('/api/login', async (req, res) => {
-  const { username, password } = req.body;
-  let user = await User.findOne({ username });
+  try {
+    const { username, password } = req.body;
+    let user = await User.findOne({ username });
 
-  if (!user) {
-    user = new User({ username, password });
-    await user.save();
+    if (!user) {
+      user = new User({ username, password });
+      await user.save();
+    }
+
+    if (user.password !== password) {
+      return res.status(401).json({ message: 'Invalid password' });
+    }
+
+    res.json(user);
+  } catch (err) {
+    console.error('Error in /api/login:', err);
+    res.status(500).json({ message: 'Internal server error' });
   }
-
-  if (user.password !== password) {
-    return res.status(401).json({ message: 'Invalid password' });
-  }
-
-  res.json(user);
 });
 
 // ✅ Get Questions
@@ -83,42 +88,50 @@ app.get('/api/questions', (req, res) => {
 
 // ✅ Submit Answers
 app.post('/api/submit', async (req, res) => {
-  const { username, answers, section } = req.body;
-  const user = await User.findOne({ username });
-  if (!user) return res.status(404).json({ message: 'User not found' });
+  try {
+    const { username, answers, section } = req.body;
+    const user = await User.findOne({ username });
+    if (!user) return res.status(404).json({ message: 'User not found' });
 
-  // Accept client-provided score if present (we trust the client in this mode).
-  // Fallback: compute score server-side if score not provided.
-  let score = typeof req.body.score === 'number' ? req.body.score : 0;
-  if (typeof req.body.score !== 'number') {
-    for (let i = 0; i < questions.length; i++) {
-      if (answers && answers[i] === questions[i].answer) score++;
+    // Accept client-provided score if present (we trust the client in this mode).
+    // Fallback: compute score server-side if score not provided.
+    let score = typeof req.body.score === 'number' ? req.body.score : 0;
+    if (typeof req.body.score !== 'number') {
+      for (let i = 0; i < questions.length; i++) {
+        if (answers && answers[i] === questions[i].answer) score++;
+      }
     }
+
+    const sect = section || 'default';
+
+    const current = user.scores.get(sect) || 0;
+    if (score > current) {
+      user.scores.set(sect, score);
+      await user.save();
+    }
+
+    res.json({ score: user.scores.get(sect) });
+  } catch (err) {
+    console.error('Error in /api/submit:', err);
+    res.status(500).json({ message: 'Internal server error' });
   }
-
-  const sect = section || 'default';
-
-  // Atomically store the user's best score for this section using $max on the map field
-  // MongoDB doesn't support $max directly on map keys via Mongoose in update operators, so use a two-step upsert-safe approach.
-  const current = user.scores.get(sect) || 0;
-  if (score > current) {
-    user.scores.set(sect, score);
-    await user.save();
-  }
-
-  res.json({ score: user.scores.get(sect) });
 });
 
 // ✅ Leaderboard
 app.get('/api/leaderboard', async (req, res) => {
-  // support ?section=SECTION_NAME to get per-section leaderboard
-  const section = req.query.section || 'default';
+  try {
+    // support ?section=SECTION_NAME to get per-section leaderboard
+    const section = req.query.section || 'default';
 
-  // Retrieve all users and their score for the requested section, sort descending
-  const users = await User.find().select('username scores');
-  const list = users.map(u => ({ username: u.username, score: (u.scores && u.scores.get(section)) || 0 }));
-  list.sort((a, b) => b.score - a.score);
-  res.json(list);
+    // Retrieve all users and their score for the requested section, sort descending
+    const users = await User.find().select('username scores');
+    const list = users.map(u => ({ username: u.username, score: (u.scores && u.scores.get(section)) || 0 }));
+    list.sort((a, b) => b.score - a.score);
+    res.json(list);
+  } catch (err) {
+    console.error('Error in /api/leaderboard:', err);
+    res.status(500).json({ message: 'Internal server error' });
+  }
 });
 
 // Health check route for cron / monitoring
