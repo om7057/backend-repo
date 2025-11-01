@@ -80,6 +80,7 @@ app.post('/api/login', async (req, res) => {
       '22510039': 'cseopinchat',
       '22510112': 'cseopinchat',
       '22510095': 'cseopinchat',
+      'ituser': 'cseopinchat',
     };
 
     if (!allowlist[username] || allowlist[username] !== password) {
