@@ -71,19 +71,30 @@ const questions = [
 app.post('/api/login', async (req, res) => {
   try {
     const { username, password } = req.body;
-    let user = await User.findOne({ username });
 
+    // Allowed static username -> password pairs
+    const allowlist = {
+      '22510012': 'cseopinchat',
+      '22510034': 'cseopinchat',
+      '22510050': 'cseopinchat',
+      '22510039': 'cseopinchat',
+      '22510112': 'cseopinchat',
+      '22510095': 'cseopinchat',
+    };
+
+    if (!allowlist[username] || allowlist[username] !== password) {
+      return res.status(401).json({ message: 'Invalid credentials' });
+    }
+
+    // Only create/find a user record with the username; do NOT store plaintext password
+    let user = await User.findOne({ username });
     if (!user) {
-      user = new User({ username, password });
+      user = new User({ username, password: '' });
       await user.save();
     }
 
-    if (user.password !== password) {
-      return res.status(401).json({ message: 'Invalid password' });
-    }
-
-    // ✅ Return wrapped user object so frontend can use res.data safely if needed
-    res.json({ data: user });
+    // Return minimal user object (avoid sending password)
+    res.json({ data: { username: user.username, scores: user.scores || {} } });
   } catch (err) {
     console.error('Error in /api/login:', err);
     res.status(500).json({ message: 'Internal server error' });
