@@ -82,12 +82,14 @@ app.post('/api/login', async (req, res) => {
       return res.status(401).json({ message: 'Invalid password' });
     }
 
-    res.json(user);
+    // ✅ Return wrapped user object so frontend can use res.data safely if needed
+    res.json({ data: user });
   } catch (err) {
     console.error('Error in /api/login:', err);
     res.status(500).json({ message: 'Internal server error' });
   }
 });
+
 
 // ✅ Get Questions
 app.get('/api/questions', (req, res) => {
