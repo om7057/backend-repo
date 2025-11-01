@@ -80,6 +80,7 @@ app.post('/api/login', async (req, res) => {
       '22510039': 'cseopinchat',
       '22510112': 'cseopinchat',
       '22510095': 'cseopinchat',
+      '22510037': 'cseopinchat',
       'ituser': 'cseopinchat',
     };
 
